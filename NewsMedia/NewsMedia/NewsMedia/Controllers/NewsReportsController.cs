@@ -51,7 +51,15 @@ namespace NewsMedia.Controllers
         {
             
             var CurrentUser = User.Identity.Name;
-            var newsReports = _context.NewsReport.Where(m => m.CreationEmail == CurrentUser);
+            var searchCategory = "";
+
+            // Call webapi to get list of reports  - created by the logged in user filter to be done
+
+            //var newsReports = await _reportsApiClient.GetReportList();
+            var newsReports = await _reportsApiClient.GetReportListByFilter(CurrentUser, searchCategory);
+
+            //var newsReports = _context.NewsReport.Where(m => m.CreationEmail == CurrentUser);  BC 10/4
+
             //var nr = new NewsReport();
             // Busco todos los reports (tiene category ID)
             //var newsReports = _context.NewsReport.ToList();
@@ -187,8 +195,15 @@ namespace NewsMedia.Controllers
             {
                 newsReport.CreationDate = DateTime.Now;
                 newsReport.CreationEmail = User.Identity.Name;
-                _context.Add(newsReport);
-                await _context.SaveChangesAsync();
+
+
+                //Changed to call webapi and remove call to local report db
+
+                await _reportsApiClient.CreateReportItem(newsReport);
+
+                //_context.Add(newsReport);
+                //await _context.SaveChangesAsync();
+
                 return RedirectToAction(nameof(Index));
             }
 
@@ -228,8 +243,9 @@ namespace NewsMedia.Controllers
             // Amended to use webapi and remove local db call 
 
             int ReportId = id.Value;
-            //var newsReport = await _reportsApiClient.GetReportItem(ReportId); IT MUST BE CALLED LATER
-            var newsReport = await _context.NewsReport.FindAsync(id);
+            var newsReport = await _reportsApiClient.GetReportItem(ReportId);
+
+            //var newsReport = await _context.NewsReport.FindAsync(id);
             if (newsReport == null)
             {
                 return NotFound();
@@ -254,25 +270,27 @@ namespace NewsMedia.Controllers
             {
                 // Amended to use webapi and remove local db call & associated error handling 
                 newsReport.LastModifiedDate = DateTime.Now;
-                //await _reportsApiClient.UpdateReportItem(id, newsReport); IT MUST BE CALLED LATER
-                try
-                {
-                    newsReport.CreationDate = DateTime.Now;
-                    newsReport.CreationEmail = User.Identity.Name;
-                    _context.Update(newsReport);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!NewsReportExists(newsReport.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                newsReport.CreationDate = DateTime.Now;
+                newsReport.CreationEmail = User.Identity.Name;
+                await _reportsApiClient.UpdateReportItem(id, newsReport); 
+                //try
+                //{
+                //    newsReport.CreationDate = DateTime.Now;
+                //    newsReport.CreationEmail = User.Identity.Name;
+                //    _context.Update(newsReport);
+                //    await _context.SaveChangesAsync();
+                //}
+                //catch (DbUpdateConcurrencyException)
+                //{
+                //    if (!NewsReportExists(newsReport.Id))
+                //    {
+                //        return NotFound();
+                //    }
+                //    else
+                //    {
+                //        throw;
+                //    }
+                //}
                 return RedirectToAction(nameof(Index));
             }
             ViewBag.CategoriesSelectList = new SelectList(GetCategories(), "Id", "Name");
